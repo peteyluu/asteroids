@@ -48,6 +48,8 @@
 
 	const e = addEventListener("DOMContentLoaded", () => {
 	  const canvas = document.getElementsByTagName("canvas")[0];
+	  canvas.width = 980;
+	  canvas.height = 552;
 	  const ctx = canvas.getContext("2d");
 	  new GameView(ctx).start();
 	});
@@ -113,15 +115,10 @@
 	  this.addShip();
 	};
 
-	Game.DIM_X = 1000;
-	Game.DIM_Y = 600;
+	Game.DIM_X = 980;
+	Game.DIM_Y = 552;
 	Game.NUM_ASTEROIDS = 10;
 
-	// + Vx -> right
-	// - Vx -> left
-	// + Vy -> down
-	// - Vy -> up
-	// A Bullet can only move in one direction (-Vy, which is "up").
 	Game.prototype.isOutOfBounds = function(pos) {
 	  if (pos[0] < 0 ||
 	      pos[1] < 0 ||
@@ -205,11 +202,16 @@
 	};
 
 	Game.prototype.draw = function(ctx) {
-	  let allObjects = this.allObjects();
-	  ctx.clearRect(0, 0, 1000, 600);
-	  for (let i = 0; i < allObjects.length; i++) {
-	    allObjects[i].draw(ctx);
-	  }
+	  const img = new Image();
+	  img.onload = () => {
+	    ctx.clearRect(0, 0, Game.DIM_X, Game.DIM_Y);
+	    ctx.drawImage(img, 0, 0);
+	    let allObjects = this.allObjects();
+	    for (let i = 0; i < allObjects.length; i++) {
+	      allObjects[i].draw(ctx);
+	    }
+	  };
+	  img.src ='./assets/background.jpg';
 	};
 
 	Game.prototype.moveObjects = function() {
@@ -427,7 +429,7 @@
 	Util.inherits(Bullet, MovingObject);
 
 	Bullet.defaults = {
-	  COLOR: "#000000",
+	  COLOR: "#FF0000",
 	  RADIUS: 5,
 	  SPEED: 5
 	};
