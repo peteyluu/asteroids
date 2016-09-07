@@ -117,6 +117,21 @@
 	Game.DIM_Y = 600;
 	Game.NUM_ASTEROIDS = 10;
 
+	// + Vx -> right
+	// - Vx -> left
+	// + Vy -> down
+	// - Vy -> up
+	// A Bullet can only move in one direction (-Vy, which is "up").
+	Game.prototype.isOutOfBounds = function(pos) {
+	  if (pos[0] < 0 ||
+	      pos[1] < 0 ||
+	      pos[0] > Game.DIM_X ||
+	      pos[1] > Game.DIM_Y) {
+	    return true;
+	  }
+	  return false;
+	};
+
 	Game.prototype.add = function(obj) {
 	  if (obj instanceof Asteroid) {
 	    this.asteroids.push(obj);
@@ -299,6 +314,8 @@
 	  this.game = options.game;
 	};
 
+	MovingObject.prototype.isWrappable = true;
+
 	MovingObject.prototype.collideWith = function(otherObject) {
 	  // this.game.remove(otherObject);
 	  // this.game.remove(this);
@@ -329,7 +346,13 @@
 	MovingObject.prototype.move = function() {
 	  this.pos[0] += this.vel[0];
 	  this.pos[1] += this.vel[1];
-	  this.pos = this.game.wrap(this.pos);
+	  if (this.game.isOutOfBounds(this.pos)) {
+	    if (this.isWrappable) {
+	      this.pos = this.game.wrap(this.pos);
+	    } else {
+	      this.game.remove(this);
+	    }
+	  }
 	};
 
 	module.exports = MovingObject;
@@ -415,6 +438,8 @@
 	    this.game.remove(this);
 	  }
 	};
+
+	Bullet.prototype.isWrappable = false;
 
 	module.exports = Bullet;
 
