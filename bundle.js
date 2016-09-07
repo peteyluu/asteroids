@@ -68,15 +68,20 @@
 	  "w": [0, -1],
 	  "a": [-1, 0],
 	  "s": [0, 1],
-	  "d": [1, 0]
+	  "d": [1, 0],
+	  "c": undefined
 	};
 
 	GameView.prototype.bindKeyHandlers = function() {
 	  const ship = this.game.ship[0];
 
 	  Object.keys(GameView.MOVES).forEach((k) => {
-	    let move = GameView.MOVES[k];
-	    key(k, () => { ship.power(move); });
+	    if (GameView.MOVES[k] === undefined) {
+	      key(k, () => { ship.fireBullet(); });
+	    } else {
+	      let move = GameView.MOVES[k];
+	      key(k, () => { ship.power(move); });
+	    }
 	  });
 	};
 
@@ -98,10 +103,12 @@
 	const Util = __webpack_require__(3);
 	const Asteroid = __webpack_require__(4);
 	const Ship = __webpack_require__(6);
+	const Bullet = __webpack_require__(7);
 
 	const Game = function() {
 	  this.asteroids = [];
 	  this.ship = [];
+	  this.bullets = [];
 	  this.addAsteroids();
 	  this.addShip();
 	};
@@ -109,6 +116,14 @@
 	Game.DIM_X = 1000;
 	Game.DIM_Y = 600;
 	Game.NUM_ASTEROIDS = 10;
+
+	Game.prototype.add = function(obj) {
+	  if (obj instanceof Asteroid) {
+	    this.asteroids.push(obj);
+	  } else if (obj instanceof Bullet) {
+	    this.bullets.push(obj);
+	  }
+	};
 
 	Game.prototype.addShip = function() {
 	  this.ship.push(new Ship({
@@ -118,12 +133,17 @@
 	};
 
 	Game.prototype.allObjects = function() {
-	  return [].concat(this.asteroids, this.ship);
+	  return [].concat(this.asteroids, this.ship, this.bullets);
 	};
 
-	Game.prototype.remove = function(asteroid) {
-	  let idx = this.asteroids.indexOf(asteroid);
-	  this.asteroids.splice(idx, 1);
+	Game.prototype.remove = function(obj) {
+	  if (obj instanceof Asteroid) {
+	    let idx = this.asteroids.indexOf(obj);
+	    this.asteroids.splice(idx, 1);
+	  } else if (obj instanceof Bullet) {
+	    let idx = this.bullets.indexOf(obj);
+	    this.bullets.splice(idx, 1);
+	  }
 	};
 
 	Game.prototype.step = function() {
@@ -156,7 +176,7 @@
 
 	Game.prototype.addAsteroids = function() {
 	  for (let i = 0; i < Game.NUM_ASTEROIDS; i++) {
-	    this.asteroids.push(new Asteroid(
+	    this.add(new Asteroid(
 	      { pos: this.randomPosition(),
 	        game: this
 	    }));
@@ -221,7 +241,11 @@
 	  distance: function(pos1, pos2) {
 	    return Math.sqrt((Math.pow(pos2[0] - pos1[0], 2)) +
 	                     (Math.pow(pos2[1] - pos1[1], 2)));
-	  }
+	  },
+
+	  norm: function (vec) {
+	    return Util.distance([0, 0], vec);
+	  },
 	};
 
 	module.exports = Util;
@@ -257,7 +281,6 @@
 	  RADIUS: 10,
 	  SPEED: 5
 	};
-
 
 	module.exports = Asteroid;
 
@@ -318,12 +341,13 @@
 
 	const Util = __webpack_require__(3);
 	const MovingObject = __webpack_require__(5);
+	const Bullet = __webpack_require__(7);
 
 	const Ship = function(options) {
 	  options.vel = [0, 0];
 	  options.radius = Ship.defaults.RADIUS;
 	  options.color = Ship.defaults.COLOR;
-
+	  this.game = options.game;
 	  MovingObject.call(this, options);
 	};
 
@@ -340,13 +364,59 @@
 	  this.vel[1] += impulse[1];
 	};
 
+	// Need to make a copy of the position of the ship
+	// Then, deduct the ship's radius
+	// As a result, the bullet goes a -Vy direction, while Vx is set to 0
+	Ship.prototype.fireBullet = function() {
+	  let newPos = this.pos.slice();
+	  newPos[1] -= this.radius;
+	  let bullet = new Bullet({
+	    pos: newPos,
+	    game: this.game
+	  });
+
+	  this.game.add(bullet);
+	};
+
 	Ship.defaults = {
 	  RADIUS: 10,
 	  COLOR: "#0000FF"
 	};
 
-
 	module.exports = Ship;
+
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+	const Util = __webpack_require__(3);
+	const MovingObject = __webpack_require__(5);
+
+	const Bullet = function(options) {
+	  options.color = Bullet.defaults.COLOR;
+	  options.radius = Bullet.defaults.RADIUS;
+	  options.vel = Util.scale([0, -1], Bullet.defaults.SPEED);
+
+	  MovingObject.call(this, options);
+	};
+
+	Util.inherits(Bullet, MovingObject);
+
+	Bullet.defaults = {
+	  COLOR: "#000000",
+	  RADIUS: 5,
+	  SPEED: 5
+	};
+
+	Bullet.prototype.collideWith = function(asteroid) {
+	  if (this.isCollidedWith(asteroid)) {
+	    this.game.remove(asteroid);
+	    this.game.remove(this);
+	  }
+	};
+
+	module.exports = Bullet;
 
 
 /***/ }
