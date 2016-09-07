@@ -64,6 +64,7 @@
 	const GameView = function(ctx) {
 	  this.ctx = ctx;
 	  this.game = new Game();
+	  this.lastTime = 0;
 	};
 
 	GameView.MOVES = {
@@ -71,28 +72,57 @@
 	  "a": [-1, 0],
 	  "s": [0, 1],
 	  "d": [1, 0],
-	  "c": undefined
+	};
+
+	GameView.prototype.animate = function(timestamp) {
+	  let delta = timestamp - this.lastTime;
+	  requestAnimationFrame(this.animate.bind(this));
+	  this.game.step(delta);
+	  this.game.draw(this.ctx);
+	  this.lastTime = timestamp;
 	};
 
 	GameView.prototype.bindKeyHandlers = function() {
 	  const ship = this.game.ship[0];
 
 	  Object.keys(GameView.MOVES).forEach((k) => {
-	    if (GameView.MOVES[k] === undefined) {
-	      key(k, () => { ship.fireBullet(); });
-	    } else {
-	      let move = GameView.MOVES[k];
-	      key(k, () => { ship.power(move); });
-	    }
+	    let move = GameView.MOVES[k];
+	    key(k, () => { ship.power(move); });
 	  });
+
+	  key("space", () => { ship.fireBullet(); });
 	};
+
+	/*
+	  window.requestAnimationFrame(callback);
+
+	  Params:
+	  -> callback
+	    - A parameter specifying a function to call when it's time to
+	    update your animation for the next repaint.
+	    - The callback has one single argument, a
+	    DOMHighResTimeStamp, which indicates the current time (the
+	    time returned from Performance.now() ) for when
+	    requestAnimationFrame starts to fire callbacks.
+
+	  Return value:
+	    - A long integer value, thr request id, that uniquely
+	    identifies the entry in the callback list.
+	    - This is a non-zero value, but you may not make any other
+	    assumptions about its value.
+	    - You can pass this value to `window.cancelAnimationFrame()`
+	    to cancel the refresh callback request.
+	*/
 
 	GameView.prototype.start = function() {
 	  this.bindKeyHandlers();
-	  setInterval(() => {
-	    this.game.step();
-	    this.game.draw(this.ctx);
-	  }, 20);
+	  requestAnimationFrame(
+	    this.animate.bind(this)
+	  );
+	  // setInterval(() => {
+	  //   this.game.step();
+	  //   this.game.draw(this.ctx);
+	  // }, 20);
 	};
 
 	module.exports = GameView;
@@ -158,8 +188,8 @@
 	  }
 	};
 
-	Game.prototype.step = function() {
-	  this.moveObjects();
+	Game.prototype.step = function(delta) {
+	  this.moveObjects(delta);
 	  this.checkCollisions();
 	};
 
@@ -214,10 +244,10 @@
 	  img.src ='./assets/background.jpg';
 	};
 
-	Game.prototype.moveObjects = function() {
+	Game.prototype.moveObjects = function(delta) {
 	  let allObjects = this.allObjects();
 	  for (let i = 0; i < allObjects.length; i++) {
-	    allObjects[i].move();
+	    allObjects[i].move(delta);
 	  }
 	};
 
@@ -295,8 +325,8 @@
 
 	Asteroid.defaults = {
 	  COLOR: "#00FF00",
-	  RADIUS: 10,
-	  SPEED: 5
+	  RADIUS: 20,
+	  SPEED: 1.5
 	};
 
 	module.exports = Asteroid;
@@ -345,9 +375,13 @@
 	  ctx.fill();
 	};
 
-	MovingObject.prototype.move = function() {
-	  this.pos[0] += this.vel[0];
-	  this.pos[1] += this.vel[1];
+	// The delta will be created in the GameView's `#animate` method
+	// based on the time variable provided by `window.requestAnimationFrame`.
+	MovingObject.prototype.move = function(delta = 1) {
+	  const velX = this.vel[0] * delta / 20;
+	  const velY = this.vel[1] * delta / 20;
+	  this.pos = [this.pos[0] + velX, this.pos[1] + velY];
+
 	  if (this.game.isOutOfBounds(this.pos)) {
 	    if (this.isWrappable) {
 	      this.pos = this.game.wrap(this.pos);
@@ -389,14 +423,13 @@
 	  this.vel[1] += impulse[1];
 	};
 
-	// Need to make a copy of the position of the ship
-	// Then, deduct the ship's radius
-	// As a result, the bullet goes a -Vy direction, while Vx is set to 0
 	Ship.prototype.fireBullet = function() {
-	  let newPos = this.pos.slice();
-	  newPos[1] -= this.radius;
+	  let relVel = Util.scale(this.vel, Bullet.SPEED);
+	  let newVel = [this.vel[0] + relVel[0], this.vel[1] + relVel[1]];
+
 	  let bullet = new Bullet({
-	    pos: newPos,
+	    pos: this.pos,
+	    vel: newVel,
 	    game: this.game
 	  });
 
@@ -419,20 +452,17 @@
 	const MovingObject = __webpack_require__(5);
 
 	const Bullet = function(options) {
-	  options.color = Bullet.defaults.COLOR;
-	  options.radius = Bullet.defaults.RADIUS;
-	  options.vel = Util.scale([0, -1], Bullet.defaults.SPEED);
+	  options.color = Bullet.COLOR;
+	  options.radius = Bullet.RADIUS;
 
 	  MovingObject.call(this, options);
 	};
 
 	Util.inherits(Bullet, MovingObject);
 
-	Bullet.defaults = {
-	  COLOR: "#FF0000",
-	  RADIUS: 5,
-	  SPEED: 5
-	};
+	Bullet.COLOR = "#FF0000";
+	Bullet.RADIUS = 5;
+	Bullet.SPEED = 5;
 
 	Bullet.prototype.collideWith = function(asteroid) {
 	  if (this.isCollidedWith(asteroid)) {
