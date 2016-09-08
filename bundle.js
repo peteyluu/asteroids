@@ -45,11 +45,12 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	const GameView = __webpack_require__(1);
+	const Game = __webpack_require__(2);
 
 	const e = addEventListener("DOMContentLoaded", () => {
 	  const canvas = document.getElementsByTagName("canvas")[0];
-	  canvas.width = 980;
-	  canvas.height = 552;
+	  canvas.width = Game.DIM_X;
+	  canvas.height = Game.DIM_Y;
 	  const ctx = canvas.getContext("2d");
 	  new GameView(ctx).start();
 	});
@@ -68,10 +69,10 @@
 	};
 
 	GameView.MOVES = {
-	  "w": [0, -1],
-	  "a": [-1, 0],
-	  "s": [0, 1],
-	  "d": [1, 0],
+	  "w": [ 0, -1],
+	  "a": [-1,  0],
+	  "s": [ 0,  1],
+	  "d": [ 1,  0],
 	};
 
 	GameView.prototype.animate = function(timestamp) {
@@ -285,7 +286,7 @@
 	    }
 	  },
 
-	  distance: function(pos1, pos2) {
+	  distance: function (pos1, pos2) {
 	    return Math.sqrt((Math.pow(pos2[0] - pos1[0], 2)) +
 	                     (Math.pow(pos2[1] - pos1[1], 2)));
 	  },
@@ -406,7 +407,7 @@
 	  options.vel = [0, 0];
 	  options.radius = Ship.defaults.RADIUS;
 	  options.color = Ship.defaults.COLOR;
-	  this.game = options.game;
+
 	  MovingObject.call(this, options);
 	};
 
@@ -417,7 +418,6 @@
 	  this.vel = [0, 0];
 	};
 
-	// The impulse should be added to the current velocity of the ship.
 	Ship.prototype.power = function(impulse) {
 	  this.vel[0] += impulse[0];
 	  this.vel[1] += impulse[1];
